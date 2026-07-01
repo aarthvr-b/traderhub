@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  displayName        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  telegramConnection TelegramConnection?
+  alerts             Alert[]
+  alertEvents        AlertEvent[]
+  trades             Trade[]
+}
+
+model TelegramConnection {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  chatId    String   @unique
+  username  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id              String      @id @default(cuid())
+  userId          String
+  symbol          String
+  triggerType     TriggerType
+  targetPrice     Decimal
+  label           String
+  note            String?
+  priceSource     PriceSource @default(LAST)
+  cooldownMinutes Int         @default(5)
+  repeatMode      RepeatMode  @default(ONCE)
+  status          AlertStatus @default(ACTIVE)
+  isArmed         Boolean     @default(true)
+  lastPrice       Decimal?
+  lastTriggeredAt DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events          AlertEvent[]
+
+  @@index([userId, status, symbol])
+}
+
+model AlertEvent {
+  id            String      @id @default(cuid())
+  alertId       String
+  userId        String
+  symbol        String
+  triggerType   TriggerType
+  targetPrice   Decimal
+  actualPrice   Decimal
+  delivered     Boolean     @default(false)
+  deliveredAt   DateTime?
+  failureReason String?
+  createdAt     DateTime    @default(now())
+  alert         Alert       @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([alertId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Trade {
+  id               String         @id @default(cuid())
+  userId           String?
+  pair             String
+  direction        TradeDirection
+  accountSize      Decimal
+  riskPct          Decimal
+  entryPrice       Decimal
+  stopLoss         Decimal
+  riskAmount       Decimal?
+  quantity         Decimal?
+  orderValue       Decimal?
+  requiredLeverage Decimal?
+  makerFee         Decimal?
+  takerFee         Decimal?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notes            TradeNote[]
+
+  @@index([userId, createdAt])
+  @@index([pair, createdAt])
+}
+
+model TradeNote {
+  id        String   @id @default(cuid())
+  tradeId   String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  trade     Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([tradeId, createdAt])
+}
+
+enum TriggerType {
+  TOUCH
+  ABOVE
+  BELOW
+}
+
+enum PriceSource {
+  LAST
+  MARK
+}
+
+enum RepeatMode {
+  ONCE
+  REPEAT
+}
+
+enum AlertStatus {
+  ACTIVE
+  PAUSED
+  TRIGGERED
+  DISABLED
+}
+
+enum TradeDirection {
+  LONG
+  SHORT
+}
