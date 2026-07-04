@@ -1,11 +1,8 @@
-import { getDbClient } from "@/lib/db";
+import { db } from '@/lib/db';
 
-export async function listAlerts() {
-  const db = await getDbClient();
-
+export async function listAlerts(userId: string) {
   return db.alert.findMany({
-    orderBy: {
-      createdAt: "desc",
-    },
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
   });
 }
